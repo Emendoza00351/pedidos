@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0F766E" />
+  <title>Anótame tu pedido</title>
+  <style>
+    :root {
+      --primario: #0F766E;
+      --claro: #E7F6EF;
+      --fondo: #F4F6F5;
+      --tarjeta: #FFFFFF;
+      --texto: #1F2937;
+      --suave: #6B7280;
+      --borde: #E5E7EB;
+      --peligro: #DC2626;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+      margin: 0; background: var(--fondo); color: var(--texto);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      font-size: 16px; line-height: 1.4;
+    }
+    header { background: var(--primario); color: #fff; padding: 20px 16px 24px; }
+    header h1 { margin: 0; font-size: 22px; }
+    header p { margin: 6px 0 0; opacity: .9; }
+    main { max-width: 560px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; padding-bottom: 110px; }
+    .tarjeta { background: var(--tarjeta); border-radius: 14px; padding: 14px; display: grid; gap: 10px; box-shadow: 0 2px 6px rgba(0,0,0,.05); }
+    label { font-size: 13px; font-weight: 600; color: var(--suave); display: grid; gap: 4px; }
+    input, select, textarea {
+      font: inherit; color: var(--texto); background: #fff; width: 100%;
+      border: 1px solid var(--borde); border-radius: 10px; padding: 11px 12px;
+    }
+    textarea { min-height: 70px; resize: vertical; }
+    .fila { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button {
+      font: inherit; font-weight: 700; border-radius: 12px; padding: 13px 16px; cursor: pointer;
+      border: 1.5px solid var(--primario); background: var(--primario); color: #fff; width: 100%;
+    }
+    button.sec { background: #fff; color: var(--primario); }
+    h2 { margin: 0; font-size: 17px; }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--borde); }
+    li:first-child { border-top: none; }
+    li .info { flex: 1; min-width: 0; }
+    li .nombre { font-weight: 600; }
+    li .det { font-size: 13px; color: var(--suave); }
+    li button { width: auto; padding: 6px 10px; background: #fff; color: var(--peligro); border-color: var(--peligro); font-size: 14px; }
+    .vacio { color: var(--suave); text-align: center; padding: 8px; }
+    .grupo { font-weight: 800; color: var(--primario); margin-top: 6px; }
+    .enviar { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--fondo) 30%); }
+    .enviar button { max-width: 560px; margin: 0 auto; display: block; background: #16A34A; border-color: #16A34A; font-size: 17px; }
+    .enviar button:disabled { opacity: .45; }
+    .ok { color: #16A34A; text-align: center; font-weight: 700; min-height: 1.4em; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🛒 Anótame lo que necesitas</h1>
+    <p id="saludo">Escribe qué necesitas y de dónde lo necesitas.</p>
+  </header>
+
+  <main>
+    <section class="tarjeta">
+      <label>Tu nombre
+        <input id="quien" placeholder="Ej. Mamá, Don Carlos" autocomplete="name" />
+      </label>
+    </section>
+
+    <form class="tarjeta" id="form">
+      <h2>Agregar producto</h2>
+      <label>¿Qué necesitas?
+        <input id="nombre" placeholder="Ej. Arroz, clavos, concentrado" required autocomplete="off" />
+      </label>
+      <div class="fila">
+        <label>Cantidad
+          <input id="cantidad" placeholder="Ej. 2 lb, 1 galón" autocomplete="off" />
+        </label>
+        <label>¿De dónde?
+          <select id="lugar"></select>
+        </label>
+      </div>
+      <label id="otroLugarWrap" hidden>Nombre del lugar
+        <input id="otroLugar" placeholder="Ej. Ferretería El Martillo" />
+      </label>
+      <label>Categoría
+        <select id="categoria"></select>
+      </label>
+      <label>Nota (marca, tamaño, color…)
+        <input id="nota" placeholder="Opcional" autocomplete="off" />
+      </label>
+      <button type="submit">＋ Agregar a mi lista</button>
+      <div class="ok" id="ok"></div>
+    </form>
+
+    <section class="tarjeta">
+      <h2>Mi lista (<span id="cuenta">0</span>)</h2>
+      <div id="lista"></div>
+    </section>
+
+    <section class="tarjeta">
+      <label>Nota general (opcional)
+        <textarea id="notaGeneral" placeholder="Ej. Si no hay de esa marca, trae otra"></textarea>
+      </label>
+    </section>
+  </main>
+
+  <div class="enviar">
+    <button id="enviar" disabled>Enviar por WhatsApp</button>
+  </div>
+
+  <script>
+    // La codificación debe coincidir con mandados/src/lib/pedido.ts
+    const params = new URLSearchParams(location.search);
+    const para = params.get('de') || '';
+    const tel = (params.get('tel') || '').replace(/\D/g, '');
+    const categorias = (params.get('cats') || '🥫 Abarrotes|🥩 Carnes y pescado|🥛 Lácteos y huevos|🥬 Frutas y verduras|🍞 Panadería|🥤 Bebidas|🧽 Limpieza|🧴 Higiene personal|💊 Farmacia|🍼 Bebé|🐶 Mascotas|🏠 Hogar|🔧 Ferretería|🌾 Agropecuaria|📦 Otros').split('|').filter(Boolean);
+    const lugares = (params.get('lug') || 'Supermercado|Mercado|Pulpería|Ferretería|Agropecuaria|Farmacia|Panadería|Tienda|Otro').split('|').filter(Boolean);
+
+    const $ = (id) => document.getElementById(id);
+    const CLAVE = 'pedido-borrador:' + para + tel;
+    let items = [];
+    try { const b = JSON.parse(localStorage.getItem(CLAVE) || 'null'); if (b) { items = b.items || []; $('quien').value = b.quien || ''; $('notaGeneral').value = b.nota || ''; } } catch (e) {}
+
+    if (para) $('saludo').textContent = `${para} te hace el mandado. Escribe qué necesitas y de dónde lo necesitas.`;
+    if (!$('quien').value) { try { $('quien').value = localStorage.getItem('pedido-nombre') || ''; } catch (e) {} }
+
+    $('lugar').innerHTML = '<option value="">— Cualquiera —</option>' +
+      lugares.map((l) => `<option>${esc(l)}</option>`).join('') + '<option value="__otro">Otro lugar…</option>';
+    $('categoria').innerHTML = '<option value="">— Sin categoría —</option>' + categorias.map((c) => `<option>${esc(c)}</option>`).join('');
+
+    $('lugar').addEventListener('change', () => { $('otroLugarWrap').hidden = $('lugar').value !== '__otro'; });
+
+    function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
+
+    function guardar() {
+      try {
+        localStorage.setItem(CLAVE, JSON.stringify({ items, quien: $('quien').value, nota: $('notaGeneral').value }));
+        localStorage.setItem('pedido-nombre', $('quien').value);
+      } catch (e) {}
+    }
+
+    function pintar() {
+      $('cuenta').textContent = items.length;
+      $('enviar').disabled = items.length === 0;
+      if (!items.length) { $('lista').innerHTML = '<div class="vacio">Todavía no has agregado nada.</div>'; return; }
+      const grupos = {};
+      items.forEach((it, idx) => { const g = it.lugar || 'Cualquier lugar'; (grupos[g] = grupos[g] || []).push([it, idx]); });
+      $('lista').innerHTML = Object.entries(grupos).map(([lugar, lista]) =>
+        `<div class="grupo">📍 ${esc(lugar)}</div><ul>` + lista.map(([it, idx]) => `
+          <li><div class="info">
+            <div class="nombre">${it.cantidad ? esc(it.cantidad) + ' ' : ''}${esc(it.nombre)}</div>
+            <div class="det">${[it.categoria, it.nota].filter(Boolean).map(esc).join(' · ')}</div>
+          </div><button type="button" data-quitar="${idx}">Quitar</button></li>`).join('') + '</ul>'
+      ).join('');
+    }
+
+    $('lista').addEventListener('click', (e) => {
+      const idx = e.target.getAttribute && e.target.getAttribute('data-quitar');
+      if (idx !== null && idx !== undefined) { items.splice(Number(idx), 1); guardar(); pintar(); }
+    });
+
+    $('form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nombre = $('nombre').value.trim();
+      if (!nombre) return;
+      const lugar = $('lugar').value === '__otro' ? $('otroLugar').value.trim() : $('lugar').value;
+      items.push({ nombre, cantidad: $('cantidad').value.trim(), lugar, categoria: $('categoria').value, nota: $('nota').value.trim() });
+      $('nombre').value = ''; $('cantidad').value = ''; $('nota').value = '';
+      $('ok').textContent = `✅ "${nombre}" agregado`;
+      setTimeout(() => { $('ok').textContent = ''; }, 2000);
+      guardar(); pintar();
+      $('nombre').focus();
+    });
+
+    $('quien').addEventListener('input', guardar);
+    $('notaGeneral').addEventListener('input', guardar);
+
+    function codificar(texto) {
+      const bytes = new TextEncoder().encode(texto);
+      let bin = '';
+      bytes.forEach((b) => { bin += String.fromCharCode(b); });
+      return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    $('enviar').addEventListener('click', () => {
+      const quien = $('quien').value.trim();
+      if (!quien) { alert('Escribe tu nombre para que sepan quién lo pide.'); $('quien').focus(); return; }
+      const nota = $('notaGeneral').value.trim();
+      const codigo = codificar(JSON.stringify({
+        v: 1, de: quien, nota,
+        i: items.map((x) => [x.nombre, x.cantidad, x.lugar, x.categoria, x.nota]),
+      }));
+      const lineas = [`🛒 *Pedido de ${quien}*`, ''];
+      items.forEach((x) => {
+        const extra = [x.lugar && `📍 ${x.lugar}`, x.nota].filter(Boolean).join(' · ');
+        lineas.push(`• ${x.cantidad ? x.cantidad + ' ' : ''}${x.nombre}${extra ? ` (${extra})` : ''}`);
+      });
+      if (nota) lineas.push('', `Nota: ${nota}`);
+      lineas.push('', 'Código para la app Mandados:', `#MANDADO:${codigo}#`);
+      const texto = lineas.join('\n');
+      guardar();
+      location.href = `https://wa.me/${tel}?text=${encodeURIComponent(texto)}`;
+    });
+
+    pintar();
+  </script>
+</body>
+</html>
