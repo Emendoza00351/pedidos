@@ -85,7 +85,7 @@
       <label id="otroLugarWrap" hidden>Nombre del lugar
         <input id="otroLugar" placeholder="Ej. Ferretería El Martillo" />
       </label>
-      <label>Categoría
+      <label>Categoría (opcional)
         <select id="categoria"></select>
       </label>
       <label>Nota (marca, tamaño, color…)
@@ -129,7 +129,7 @@
 
     $('lugar').innerHTML = '<option value="">— Cualquiera —</option>' +
       lugares.map((l) => `<option>${esc(l)}</option>`).join('') + '<option value="__otro">Otro lugar…</option>';
-    $('categoria').innerHTML = '<option value="">— Sin categoría —</option>' + categorias.map((c) => `<option>${esc(c)}</option>`).join('');
+    $('categoria').innerHTML = '<option value="">— No sé / que la app la elija —</option>' + categorias.map((c) => `<option>${esc(c)}</option>`).join('');
 
     $('lugar').addEventListener('change', () => { $('otroLugarWrap').hidden = $('lugar').value !== '__otro'; });
 
