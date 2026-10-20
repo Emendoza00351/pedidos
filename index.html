@@ -61,6 +61,11 @@
     .pago { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .pago label { display: flex; align-items: center; gap: 8px; border: 1px solid var(--borde); border-radius: 10px; padding: 10px; color: var(--texto); font-size: 15px; font-weight: 500; }
     .pago input { width: auto; }
+    .punto { display: grid; gap: 10px; border: 1px solid var(--borde); border-radius: 12px; padding: 12px; background: #FBFCFC; }
+    .punto-titulo { font-weight: 800; color: var(--primario); }
+    .ubic { display: grid; gap: 6px; }
+    .ubic button { padding: 10px; font-size: 15px; }
+    .ubic input.listo { border-color: #16A34A; background: #F0FDF4; }
   </style>
 </head>
 <body>
@@ -73,6 +78,9 @@
     <section class="tarjeta">
       <label>Tu nombre
         <input id="quien" placeholder="Ej. Mamá, Don Carlos" autocomplete="name" />
+      </label>
+      <label>Tu teléfono (opcional, para que te puedan llamar)
+        <input id="quienTel" type="tel" placeholder="Ej. 504 9999 8888" autocomplete="tel" />
       </label>
     </section>
 
@@ -104,18 +112,38 @@
       </div>
 
       <div id="soloMandado" hidden style="display:grid; gap:10px">
-        <label>¿Dónde se recoge? (lugar o persona)
-          <input id="lugarMandado" placeholder="Ej. Agencia Cargo Expreso, Doña Rosa" autocomplete="off" />
-        </label>
-        <label>Dirección
-          <textarea id="direccion" placeholder="Ej. Col. Kennedy, 2 cuadras al sur del parque"></textarea>
-        </label>
-        <label>Teléfono del lugar o de quien entrega
-          <input id="telefono" type="tel" placeholder="Ej. 504 9999 8888" autocomplete="off" />
-        </label>
-        <label>¿Dónde lo entregan? (opcional)
-          <input id="entrega" placeholder="Ej. Mi casa, mi trabajo" autocomplete="off" />
-        </label>
+        <div class="punto">
+          <div class="punto-titulo">📍 Recoger en</div>
+          <label>Lugar o persona
+            <input id="lugarMandado" placeholder="Ej. Agencia Cargo Expreso, Doña Rosa" autocomplete="off" />
+          </label>
+          <label>Dirección
+            <textarea id="direccion" placeholder="Ej. Col. Kennedy, 2 cuadras al sur del parque"></textarea>
+          </label>
+          <label>Teléfono
+            <input id="telefono" type="tel" placeholder="Ej. 504 9999 8888" autocomplete="off" />
+          </label>
+          <div class="ubic">
+            <button type="button" class="sec" data-ubic="ubicacion">📍 Usar mi ubicación actual</button>
+            <input id="ubicacion" placeholder="O pega un enlace de Google Maps" autocomplete="off" />
+          </div>
+        </div>
+        <div class="punto">
+          <div class="punto-titulo">🏁 Entregar en</div>
+          <label>¿A quién se entrega?
+            <input id="entregaContacto" placeholder="Ej. Doña María" autocomplete="off" />
+          </label>
+          <label>Dirección de entrega
+            <textarea id="entrega" placeholder="Ej. Res. Las Uvas, casa 25"></textarea>
+          </label>
+          <label>Teléfono de quien recibe
+            <input id="entregaTelefono" type="tel" placeholder="Ej. 504 9999 8888" autocomplete="off" />
+          </label>
+          <div class="ubic">
+            <button type="button" class="sec" data-ubic="entregaUbicacion">📍 Usar mi ubicación actual</button>
+            <input id="entregaUbicacion" placeholder="O pega un enlace de Google Maps" autocomplete="off" />
+          </div>
+        </div>
         <div>
           <label style="margin-bottom:6px">Pago</label>
           <div class="pago">
@@ -162,7 +190,7 @@
     try { const b = JSON.parse(localStorage.getItem(CLAVE) || 'null'); if (b) { items = b.items || []; $('quien').value = b.quien || ''; $('notaGeneral').value = b.nota || ''; } } catch (e) {}
 
     if (para) $('saludo').textContent = `${para} te hace el mandado. Escribe qué necesitas y de dónde lo necesitas.`;
-    if (!$('quien').value) { try { $('quien').value = localStorage.getItem('pedido-nombre') || ''; } catch (e) {} }
+    try { if (!$('quien').value) $('quien').value = localStorage.getItem('pedido-nombre') || ''; $('quienTel').value = localStorage.getItem('pedido-tel') || ''; } catch (e) {}
 
     $('lugar').innerHTML = '<option value="">— Cualquiera —</option>' +
       lugares.map((l) => `<option>${esc(l)}</option>`).join('') + '<option value="__otro">Otro lugar…</option>';
@@ -183,6 +211,24 @@
       $('nombre').placeholder = mandado ? 'Ej. Paquete, documentos, pedido de comida' : 'Ej. Arroz, clavos, concentrado';
       $('etiquetaNota').textContent = mandado ? 'Nota (a nombre de quién, número de guía…)' : 'Nota (marca, tamaño, color…)';
     }
+    // "Usar mi ubicación actual" → enlace de Google Maps con las coordenadas
+    document.querySelectorAll('[data-ubic]').forEach((boton) => {
+      boton.addEventListener('click', () => {
+        const campo = $(boton.getAttribute('data-ubic'));
+        if (!navigator.geolocation) { alert('Este teléfono no permite compartir la ubicación desde aquí. Pega un enlace de Google Maps.'); return; }
+        const texto = boton.textContent;
+        boton.textContent = 'Buscando ubicación…'; boton.disabled = true;
+        navigator.geolocation.getCurrentPosition((pos) => {
+          campo.value = `https://www.google.com/maps/search/?api=1&query=${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
+          campo.classList.add('listo');
+          boton.textContent = '✅ Ubicación guardada'; boton.disabled = false;
+        }, () => {
+          alert('No se pudo obtener la ubicación. Revisa que el GPS esté encendido y que diste permiso.');
+          boton.textContent = texto; boton.disabled = false;
+        }, { enableHighAccuracy: true, timeout: 20000 });
+      });
+    });
+
     $('modoCompra').addEventListener('click', () => cambiarModo('compra'));
     $('modoMandado').addEventListener('click', () => cambiarModo('mandado'));
 
@@ -192,16 +238,18 @@
       try {
         localStorage.setItem(CLAVE, JSON.stringify({ items, quien: $('quien').value, nota: $('notaGeneral').value }));
         localStorage.setItem('pedido-nombre', $('quien').value);
+        localStorage.setItem('pedido-tel', $('quienTel').value);
       } catch (e) {}
     }
 
     function detalle(it) {
       if (!it.recoger) return [it.categoria, it.nota].filter(Boolean);
+      const recoger = [it.lugar, it.direccion, it.telefono && 'Tel. ' + it.telefono, it.ubicacion && '📍 ' + it.ubicacion].filter(Boolean).join(', ');
+      const entregar = [it.entregaContacto, it.entrega, it.entregaTelefono && 'Tel. ' + it.entregaTelefono, it.entregaUbicacion && '📍 ' + it.entregaUbicacion]
+        .filter(Boolean).join(', ');
       return [
-        it.lugar && 'Recoger en: ' + it.lugar,
-        it.direccion,
-        it.telefono && 'Tel. ' + it.telefono,
-        it.entrega && 'Entregar en: ' + it.entrega,
+        recoger && 'Recoger: ' + recoger,
+        entregar && 'Entregar: ' + entregar,
         it.yaPagado ? 'Ya está pagado' : 'Hay que pagarlo',
         it.nota,
       ].filter(Boolean);
@@ -235,21 +283,22 @@
       const nombre = $('nombre').value.trim();
       if (!nombre) return;
       if (modo === 'mandado') {
-        if (!$('direccion').value.trim() && !$('telefono').value.trim() && !$('lugarMandado').value.trim()) {
-          alert('Escribe dónde se recoge: el lugar, la dirección o un teléfono.');
+        const campos = ['lugarMandado', 'direccion', 'telefono', 'ubicacion', 'entregaContacto', 'entrega', 'entregaTelefono', 'entregaUbicacion'];
+        const v = Object.fromEntries(campos.map((id) => [id, $(id).value.trim()]));
+        if (!v.lugarMandado && !v.direccion && !v.telefono && !v.ubicacion) {
+          alert('Escribe dónde se recoge: el lugar, la dirección, un teléfono o la ubicación.');
           $('lugarMandado').focus();
           return;
         }
         items.push({
           recoger: true, nombre, cantidad: '', categoria: '',
-          lugar: $('lugarMandado').value.trim(),
-          direccion: $('direccion').value.trim(),
-          telefono: $('telefono').value.trim(),
-          entrega: $('entrega').value.trim(),
+          lugar: v.lugarMandado, direccion: v.direccion, telefono: v.telefono, ubicacion: v.ubicacion,
+          entregaContacto: v.entregaContacto, entrega: v.entrega, entregaTelefono: v.entregaTelefono, entregaUbicacion: v.entregaUbicacion,
           yaPagado: document.querySelector('input[name="pago"]:checked').value === 'pagado',
           nota: $('nota').value.trim(),
         });
-        ['lugarMandado', 'direccion', 'telefono', 'entrega'].forEach((id) => { $(id).value = ''; });
+        campos.forEach((id) => { $(id).value = ''; $(id).classList.remove('listo'); });
+        document.querySelectorAll('[data-ubic]').forEach((b) => { b.textContent = '📍 Usar mi ubicación actual'; });
         document.querySelector('input[name="pago"][value="pagar"]').checked = true;
       } else {
         const lugar = $('lugar').value === '__otro' ? $('otroLugar').value.trim() : $('lugar').value;
@@ -263,6 +312,7 @@
     });
 
     $('quien').addEventListener('input', guardar);
+    $('quienTel').addEventListener('input', guardar);
     $('notaGeneral').addEventListener('input', guardar);
 
     function codificar(texto) {
@@ -278,12 +328,17 @@
       const nota = $('notaGeneral').value.trim();
       const codigo = codificar(JSON.stringify({
         v: 1, de: quien, nota,
-        // mismo orden que lee la app: [nombre, cantidad, lugar, categoría, nota, 'r', dirección, teléfono, pagado, entrega]
+        tel: $('quienTel').value.trim(),
+        // mismo orden que lee la app: [nombre, cantidad, lugar, categoría, nota, 'r', dirección, teléfono, pagado,
+        //   dirección de entrega, ubicación de recogida, quién recibe, teléfono de quien recibe, ubicación de entrega]
         i: items.map((x) => x.recoger
-          ? [x.nombre, x.cantidad, x.lugar, '', x.nota, 'r', x.direccion, x.telefono, x.yaPagado ? 1 : 0, x.entrega]
+          ? [x.nombre, x.cantidad, x.lugar, '', x.nota, 'r', x.direccion, x.telefono, x.yaPagado ? 1 : 0,
+             x.entrega, x.ubicacion, x.entregaContacto, x.entregaTelefono, x.entregaUbicacion]
           : [x.nombre, x.cantidad, x.lugar, x.categoria, x.nota]),
       }));
-      const lineas = [`🛒 *Pedido de ${quien}*`, ''];
+      const lineas = [`🛒 *Pedido de ${quien}*`];
+      if ($('quienTel').value.trim()) lineas.push(`📞 ${$('quienTel').value.trim()}`);
+      lineas.push('');
       items.forEach((x) => {
         if (x.recoger) {
           lineas.push(`📦 ${x.cantidad ? x.cantidad + ' ' : ''}${x.nombre}`);
