@@ -349,7 +349,7 @@
         lineas.push(`• ${x.cantidad ? x.cantidad + ' ' : ''}${x.nombre}${extra ? ` (${extra})` : ''}`);
       });
       if (nota) lineas.push('', `Nota: ${nota}`);
-      lineas.push('', 'Código para la app Mandados:', `#MANDADO:${codigo}#`);
+      lineas.push('', 'Código para la app MandaditosHN:', `#MANDADO:${codigo}#`);
       const texto = lineas.join('\n');
       guardar();
       // api.whatsapp.com y no wa.me: la redirección de wa.me daña los emojis
